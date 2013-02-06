@@ -110,11 +110,11 @@ function leinProjectDir ()
 function testRepls ()
 {
 	if [ "ping" == "$( cljsh -c '(println "ping")' )" ]; then
-	  alert_txt="OK: repls server up & running and listening on port ${LEIN_REPL_PORT} "
+	  alert_txt="OK: repls server up & running and listening on port ${NREPL_PORT} "
 		displayAlert "$alert_txt";
 		exit 0;
 	else
-		displayAlert "ERROR: some server listening on port ${LEIN_REPL_PORT}, but repls server not responding... not sure why (?).";
+		displayAlert "ERROR: some server listening on port ${NREPL_PORT}, but repls server not responding... not sure why (?).";
 		exit 1;
 	fi
 }
@@ -122,7 +122,7 @@ function testRepls ()
 # start "lein repls" if needed
 function startRepls ()
 {
-	if [ "${LEIN_REPL_PORT}" == "" ] || [ "$(lsof -itcp:$LEIN_REPL_PORT | grep -F LISTEN)" == "" ]; then
+	if [ "${NREPL_PORT}" == "" ] || [ "$(lsof -itcp:$NREPL_PORT | grep -F LISTEN)" == "" ]; then
 		# no app listening on expected port, so start a new repls server
 		if [ -f "${LEIN_REPL_INIT_FILE}" ]; then rm "${LEIN_REPL_INIT_FILE}"; fi
 		startTerminalScript lein repls
@@ -263,11 +263,11 @@ export RLWRAP_CLJ_WORDS_FILE=${RLWRAP_CLJ_WORDS_FILE:-"$HOME/.clj_completions"}
 export LEIN_PROJECT_DIR=$(leinProjectDir)
 if [ ! -r "$LEIN_PROJECT_DIR/project.clj" ]; then LEIN_PROJECT_DIR="$HOME"; fi
 
-export LEIN_REPL_INIT_FILE=${LEIN_REPL_INIT_FILE:-"${LEIN_PROJECT_DIR}/.lein_repls"}
+export LEIN_REPL_INIT_FILE=${LEIN_REPL_INIT_FILE:-"${LEIN_PROJECT_DIR}/.nrepls"}
 if [ -f "${LEIN_REPL_INIT_FILE}" ]; then source "${LEIN_REPL_INIT_FILE}" ; fi
 
 export LEIN_REPL_HOST=${LEIN_REPL_HOST:-"0.0.0.0"}
-export LEIN_REPL_PORT=${LEIN_REPL_PORT:-""}
+export NREPL_PORT=${NREPL_PORT:-""}
 
 # CLJSH_MAXTIME is the maximum time a task is allowed to take before socat will assume that that task is finished
 # the time is measured between the subsequent reads from stdin or writes to stdout by that task
@@ -330,7 +330,7 @@ while [ "${!OPTIND}" == "-" ] || getopts ":dCarwnoOpPqQlLgGhtTuUvVm:c:s:e:f:i:" 
     	echo ${LEIN_RESTORE_DEFAULT_NS_CONTEXT}  >> ${CLJ_CODE};
     	;;
     s)	# Leiningen repl server port
-    	LEIN_REPL_PORT="$OPTARG";
+    	NREPL_PORT="$OPTARG";
     	;;
     r) 	# interactive/repl so turn on the printing of repl-prompt and eval result
     	echo "${CLJ_REPL_PROMPT_CODE}" >> ${CLJ_CODE}
@@ -346,7 +346,7 @@ while [ "${!OPTIND}" == "-" ] || getopts ":dCarwnoOpPqQlLgGhtTuUvVm:c:s:e:f:i:" 
  	    if [ $OPTIND -gt $# ]; then exit $exit_code; fi
       ;;
     L) 	# stop/exit the lein repls server
- 	    if [ "${LEIN_REPL_PORT}" != "" ] && [ "$(lsof -itcp:$LEIN_REPL_PORT | grep -F LISTEN)" != "" ]; then
+ 	    if [ "${NREPL_PORT}" != "" ] && [ "$(lsof -itcp:$NREPL_PORT | grep -F LISTEN)" != "" ]; then
 				cljsh -c "${CLJ_EXIT_REPLS_CODE}"  >&2;
 			fi
  	    if [ $OPTIND -gt $# ]; then exit 0; fi
@@ -363,19 +363,19 @@ while [ "${!OPTIND}" == "-" ] || getopts ":dCarwnoOpPqQlLgGhtTuUvVm:c:s:e:f:i:" 
     	CLJ_STDIN_TEXT=1
       ;;
     g) 	# force a pickup of the "global" repls-server coordinates from the $HOME directory.
-			if [ -r "${HOME}/.lein_repls" ]; then
-				source "${HOME}/.lein_repls" ;
-				LEIN_PROJECT_DIR="`dirname "$(readlink "${HOME}/.lein_repls")"`"
-				LEIN_REPL_INIT_FILE="${LEIN_PROJECT_DIR}/.lein_repls"
+			if [ -r "${HOME}/.nrepls" ]; then
+				source "${HOME}/.nrepls" ;
+				LEIN_PROJECT_DIR="`dirname "$(readlink "${HOME}/.nrepls")"`"
+				LEIN_REPL_INIT_FILE="${LEIN_PROJECT_DIR}/.nrepls"
 			else
-				displayAlert "ERROR: no global/default init file found at ${HOME}/.lein_repls" ;
+				displayAlert "ERROR: no global/default init file found at ${HOME}/.nrepls" ;
       	exit 1;
 			fi
       ;;
     G) 	# make the current project the "global" one.
-			if [ -r "${LEIN_REPL_INIT_FILE}" ] && [ "${HOME}/.lein_repls" != "${LEIN_REPL_INIT_FILE}" ]; then
-				if [ -r "${HOME}/.lein_repls" ]; then rm "${HOME}/.lein_repls"; fi;
-				ln -s "${LEIN_REPL_INIT_FILE}" "${HOME}/.lein_repls";
+			if [ -r "${LEIN_REPL_INIT_FILE}" ] && [ "${HOME}/.nrepls" != "${LEIN_REPL_INIT_FILE}" ]; then
+				if [ -r "${HOME}/.nrepls" ]; then rm "${HOME}/.nrepls"; fi;
+				ln -s "${LEIN_REPL_INIT_FILE}" "${HOME}/.nrepls";
 				echo "Global Project's directory is: $(dirname "${LEIN_REPL_INIT_FILE}")" >&2;
 				exit 0;
 			else
@@ -468,10 +468,10 @@ while [ "${!OPTIND}" == "-" ] || getopts ":dCarwnoOpPqQlLgGhtTuUvVm:c:s:e:f:i:" 
 			Docs & code at "https://github.com/franks42/lein-repls"
 EOHELP
 			# do simple check to see if repls-server can be seen listenen
-			if [ "${LEIN_REPL_PORT}" == "" ] || [ "$(lsof -itcp:$LEIN_REPL_PORT | grep -F LISTEN)" == "" ]; then
-				echo "ERROR: no \"lein repls\" server listening on port ${LEIN_REPL_PORT} (use -s or \$LEIN_REPL_PORT for different port)" >&2;
+			if [ "${NREPL_PORT}" == "" ] || [ "$(lsof -itcp:$NREPL_PORT | grep -F LISTEN)" == "" ]; then
+				echo "ERROR: no \"lein repls\" server listening on port ${NREPL_PORT} (use -s or \$NREPL_PORT for different port)" >&2;
 			else
-				echo "\"lein repls\" server listening on port ${LEIN_REPL_PORT}" >&2;
+				echo "\"lein repls\" server listening on port ${NREPL_PORT}" >&2;
 			fi
 			hash socat 2>&-  || { echo >&2 "ERROR: \"socat\" is require for cljsh but not installed.";}
 			hash rlwrap 2>&- || { echo >&2 "ERROR: \"rlwrap\" is require for cljsh but not installed.";}
@@ -616,24 +616,24 @@ if [ ${CLJ_REPL_PROMPT:-0} = 1 ]; then  # user wants an interactive REPL
 		RLWRAP="${RLWRAP}"" -p${RLWRAP_PROMPT_COLOR:-Red}"" -R"" -q\""" -b (){}[],^%$#@\";:'\\"" ${RLWRAP_CLJ_WORDS_OPTION}"
 	fi
 
-	exec ${RLWRAP} bash -c "cat ${CLJ_BEFORE_LOAD} - | socat -t ${CLJSH_MAXTIME} - TCP4:${LEIN_REPL_HOST}:${LEIN_REPL_PORT}"
+	exec ${RLWRAP} bash -c "cat ${CLJ_BEFORE_LOAD} - | socat -t ${CLJSH_MAXTIME} - TCP4:${LEIN_REPL_HOST}:${NREPL_PORT}"
 
 else  # no REPL, nothing interactive
 
 	if [ ${CLJ_STDIN_TEXT:-0} -eq 1 ]; then   # arbitrary data but no code coming from stdin
 
 		# user's code is responsible for closing *in* to indicate eof as we cannot deduce it to use the kill-switch
-		exec cat ${CLJ_BEFORE_LOAD} - | socat -t ${CLJSH_MAXTIME} - TCP4:${LEIN_REPL_HOST}:${LEIN_REPL_PORT} | tee ${CLJSH_OUTPUT_A_OPTION} ${CLJSH_OUTPUT_OPTION} ;
+		exec cat ${CLJ_BEFORE_LOAD} - | socat -t ${CLJSH_MAXTIME} - TCP4:${LEIN_REPL_HOST}:${NREPL_PORT} | tee ${CLJSH_OUTPUT_A_OPTION} ${CLJSH_OUTPUT_OPTION} ;
 
 	elif [ "${CLJSH_STDIN}" == "TERM" ]; then # not interactive, so no code will come-in thru stdin
 
-		exec cat "${CLJ_CODE_BEFORE}" "${CLJ_KILL_FILE}" | socat -t ${CLJSH_MAXTIME} - TCP4:${LEIN_REPL_HOST}:${LEIN_REPL_PORT},end-close ;
+		exec cat "${CLJ_CODE_BEFORE}" "${CLJ_KILL_FILE}" | socat -t ${CLJSH_MAXTIME} - TCP4:${LEIN_REPL_HOST}:${NREPL_PORT},end-close ;
 
 	else   # expect clojure code to be piped-in from stdin and kill&end the session after that
 
 		# because the repl keeps reading from stdin for clojure-statements, we can append the kill-switch at the end
-#   	exec cat ${CLJ_BEFORE_LOAD} - ${CLJ_AFTER_LOAD} ${CLJ_KILL_FILE} | socat -t ${CLJSH_MAXTIME} - TCP4:${LEIN_REPL_HOST}:${LEIN_REPL_PORT},end-close | tee ${CLJSH_OUTPUT_A_OPTION} ${CLJSH_OUTPUT_OPTION} ;
-  	cat "${CLJ_CODE_BEFORE}" - "${CLJ_KILL_FILE}" | socat -t ${CLJSH_MAXTIME} - TCP4:${LEIN_REPL_HOST}:${LEIN_REPL_PORT},end-close;
+#   	exec cat ${CLJ_BEFORE_LOAD} - ${CLJ_AFTER_LOAD} ${CLJ_KILL_FILE} | socat -t ${CLJSH_MAXTIME} - TCP4:${LEIN_REPL_HOST}:${NREPL_PORT},end-close | tee ${CLJSH_OUTPUT_A_OPTION} ${CLJSH_OUTPUT_OPTION} ;
+  	cat "${CLJ_CODE_BEFORE}" - "${CLJ_KILL_FILE}" | socat -t ${CLJSH_MAXTIME} - TCP4:${LEIN_REPL_HOST}:${NREPL_PORT},end-close;
 
 	fi
 fi

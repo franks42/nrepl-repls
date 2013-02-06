@@ -3,7 +3,8 @@
             [clojure.tools.nrepl.server]
             [clojure.tools.nrepl.transport]])
 
-(def nrepl-srv 
-     (clojure.tools.nrepl.server/start-server 
-        :port 12345
-        :transport-fn nrepl-repls/repls))
+
+(defonce nrepl-srv (nrepl-repls/start-repls-server))
+
+
+(defn -main [])

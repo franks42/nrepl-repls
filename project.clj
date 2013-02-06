@@ -7,4 +7,5 @@
             :comments "See the notice in README.md or details in COPYING"}
   :dependencies [[org.clojure/clojure "1.4.0"]
                  [org.clojure/tools.nrepl "0.2.1"]
-                 ])
+                 ]
+  :main user)

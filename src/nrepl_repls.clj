@@ -3,7 +3,9 @@
   "An enhance tty transport that can be used with simple bash-scripts 
   to send clojure-forms to the nrepl server."
   (:use [clojure.tools.nrepl.transport])
-  (:require [clojure.tools.nrepl.bencode :as be]
+  (:require [clojure.java.shell]
+            [clojure.tools.nrepl.server]
+            [clojure.tools.nrepl.bencode :as be]
             [clojure.tools.nrepl.middleware.interruptible-eval]
             [clojure.java.io :as io]
             (clojure walk set))
@@ -29,6 +31,14 @@
   :pr-value? - toggle the printing of eval-results
   :pr-prompt? - toggle to print prompt"
   (atom {}))
+
+
+(def evals-in-progress
+  "Atomized set to maintain the message evals that are in progress.
+  When an eval request message is read, its id is added to the set.
+  When a write message is received with a done status for a msg id, it is removed from the set.
+  Only when the set is empty, i.e. no pending evals, then it's safe to close the connection."
+  (atom #{}))
 
 
 (defn set-repls-conn-context!
@@ -67,28 +77,31 @@
       :kill-switch? true))
 
 
-(def evals-in-progress
-  "Atomized set to maintain the message evals that are in progress.
-  When an eval request message is read, its id is added to the set.
-  When a write message is received with a done status for a msg id, it is removed from the set.
-  When the set is empty, i.e. no pending evals, then it's safe to close the connection."
-  (atom #{}))
-
 (def close-exception 
   "Debug info to keep the last exception thrown when the connection is closed.
   Should never happen... but heh...you never know."
   (atom nil))
 
 
+(defn repl-port-to-file [port]
+  ""
+  (spit ".nrepls" (str "export NREPL_PORT='" port "'")))
+
+
+;;
+
 (defn repls
   "Returns a Transport implementation suitable for serving an nREPL backend
    via shell-script-based in/out readers.
-   Allows for a simple bash-script to send clojure-forms and receive printed results."
+   Allows for a simple bash-scripts to send clojure-forms and receive printed results.
+   Code is based on nrepl's tty transport."
   ([^Socket s] (repls s s s))
   ([in out & [^Socket s]]
-    (let [conn-id (str "conn-id:" (uuid))]
+    (let [conn-id (str "conn-id:" (uuid))
+          port (.getLocalPort in)]
       ;; create a conn-id context entry with default initialization
       (nrepl-repls/set-repls-conn-context! conn-id :kill-switch? false)
+      (nrepl-repls/set-repls-conn-context! conn-id :port port)
       (let [r (PushbackReader. (io/reader in))
             w (io/writer out)
             cns (atom "user")
@@ -142,3 +155,11 @@
         (set-repls-conn-context! conn-id :fn-transport fnt)
         fnt)))))
 
+
+(defn start-repls-server [& cfg]
+  (let [s (clojure.tools.nrepl.server/start-server 
+            :transport-fn nrepl-repls/repls)
+        p (.-port s)]
+    (println "nREPL-repls server started on port" p)
+    (nrepl-repls/repl-port-to-file p)
+    s))
