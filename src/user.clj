@@ -6,5 +6,4 @@
 (def nrepl-srv 
      (clojure.tools.nrepl.server/start-server 
         :port 12345
-;;         :transport-fn clojure.tools.nrepl.transport/tty))
         :transport-fn nrepl-repls/repls))
